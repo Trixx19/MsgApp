@@ -62,7 +62,7 @@ fun ChatScreen(
                 ) == PackageManager.PERMISSION_GRANTED
             )
         } else {
-            mutableStateOf(true) // Em versões anteriores, a permissão é concedida por defeito
+            mutableStateOf(true)
         }
     }
 
@@ -79,11 +79,10 @@ fun ChatScreen(
             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
-    // --- FIM DA LÓGICA DE PERMISSÃO ---
 
     LaunchedEffect(messages.size) {
         val lastMsg = messages.lastOrNull()
-        // Só notifica se tiver permissão
+        // só notifica se tiver permissão
         if (hasNotificationPermission && lastMsg != null && lastMsg.senderId != userId && lastMsg.id != lastNotifiedId) {
             onNotify(lastMsg)
         }
@@ -241,10 +240,10 @@ fun MessageBubble(msg: Message, isOwn: Boolean) {
 }
 
 fun notifyNewMessage(context: Context, message: Message) {
-    // Verificamos a permissão aqui também, como uma última salvaguarda
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            // Se não tiver permissão, simplesmente não fazemos nada.
+            // Se não tiver permissão, simplesmente não faz nada.
             return
         }
     }

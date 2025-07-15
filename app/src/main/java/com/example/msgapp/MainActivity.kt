@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Um estado para representar o progresso da autenticação
+
 sealed class AuthState {
     object Loading : AuthState()
     data class Authenticated(val uid: String) : AuthState()
@@ -85,7 +85,7 @@ fun MsgAppRoot(vm: MsgViewModel = viewModel()) {
             }
             is AuthState.Authenticated -> {
                 // 3. Quando temos um ID, mostramos a aplicação
-                val userId = state.uid // Agora temos a certeza que este ID é único
+                val userId = state.uid //
                 ChatFlow(userId = userId, vm = vm)
             }
         }
