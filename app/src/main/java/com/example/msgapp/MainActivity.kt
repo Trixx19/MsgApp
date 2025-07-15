@@ -1,10 +1,21 @@
+package com.example.msgapp
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.msgapp.ui.theme.MsgAppTheme
 import com.example.msgapp.ui.view.ChatScreen
 import com.example.msgapp.ui.view.RoomSelector
 import com.example.msgapp.ui.view.notifyNewMessage
@@ -15,6 +26,8 @@ import com.google.firebase.auth.FirebaseAuth
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         FirebaseApp.initializeApp(this)
         setContent {
             MsgAppTheme {
@@ -24,52 +37,93 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
-fun MsgAppTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colors = lightColors(
-            primary = androidx.compose.ui.graphics.Color(0xFF1976D2),
-            secondary = androidx.compose.ui.graphics.Color(0xFF42A5F5)
-        ),
-        content = content
-    )
+// Um estado para representar o progresso da autenticação
+sealed class AuthState {
+    object Loading : AuthState()
+    data class Authenticated(val uid: String) : AuthState()
+    object Error : AuthState()
 }
-
-
 
 @Composable
 fun MsgAppRoot(vm: MsgViewModel = viewModel()) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        var authState by remember { mutableStateOf<AuthState>(AuthState.Loading) }
 
-    // Login anônimo do Firebase
-    val firebaseAuth = remember { FirebaseAuth.getInstance() }
-    val user by produceState(initialValue = firebaseAuth.currentUser) {
-        if (value == null) {
-            firebaseAuth.signInAnonymously()
-                .addOnCompleteListener { task -> value = firebaseAuth.currentUser }
+        // Este efeito corre uma vez para garantir que temos um utilizador autenticado
+        LaunchedEffect(Unit) {
+            val auth = FirebaseAuth.getInstance()
+            if (auth.currentUser == null) {
+                auth.signInAnonymously().addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        val uid = task.result?.user?.uid
+                        authState = if (uid != null) AuthState.Authenticated(uid) else AuthState.Error
+                    } else {
+                        authState = AuthState.Error
+                    }
+                }
+            } else {
+                authState = AuthState.Authenticated(auth.currentUser!!.uid)
+            }
+        }
+
+        // O ecrã muda com base no estado da autenticação
+        when (val state = authState) {
+            is AuthState.Loading -> {
+                // 1. Mostra um indicador de progresso enquanto espera pelo ID
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            is AuthState.Error -> {
+                // 2. Mostra uma mensagem de erro se algo correr mal
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Falha na autenticação. Tente novamente.")
+                }
+            }
+            is AuthState.Authenticated -> {
+                // 3. Quando temos um ID, mostramos a aplicação
+                val userId = state.uid // Agora temos a certeza que este ID é único
+                ChatFlow(userId = userId, vm = vm)
+            }
         }
     }
-    val userId = user?.uid ?: "pedro"
+}
+
+@Composable
+fun ChatFlow(userId: String, vm: MsgViewModel) {
+    val context = LocalContext.current
     var userName by remember { mutableStateOf("Usuário-${userId.takeLast(4)}") }
-    var currentRoom by remember { mutableStateOf("geral") }
+    var currentRoom by remember { mutableStateOf<String?>(null) }
     var lastNotifiedId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(currentRoom) {
-        vm.switchRoom(currentRoom)
+        currentRoom?.let { vm.switchRoom(it) }
     }
 
-    Column {
-        RoomSelector(onRoomSelected = { if (it.isNotBlank()) currentRoom = it })
+    if (currentRoom == null) {
+        RoomSelector(onRoomSelected = { roomName ->
+            if (roomName.isNotBlank()) {
+                currentRoom = roomName
+            }
+        })
+    } else {
+        val roomName = currentRoom ?: "desconhecida"
         ChatScreen(
             username = userName,
             userId = userId,
             messages = vm.messages.collectAsState().value,
             onSend = { text -> vm.sendMessage(userId, userName, text) },
-            currentRoom = currentRoom,
+            currentRoom = roomName,
             lastNotifiedId = lastNotifiedId,
             onNotify = { msg ->
                 notifyNewMessage(context, msg)
                 lastNotifiedId = msg.id
+            },
+            onLeaveRoom = {
+                currentRoom = null
             }
         )
     }

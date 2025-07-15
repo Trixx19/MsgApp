@@ -45,7 +45,7 @@ android {
     }
 }
 
-dependencies {
+/*dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-database-ktx")
     implementation("com.google.firebase:firebase-auth-ktx") // Só para login anônimo
@@ -63,6 +63,37 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
+}*/
+
+dependencies {
+    // Usar a Bill of Materials (BOM) do Compose para gerir as versões
+    implementation(platform(libs.androidx.compose.bom))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3") // Apenas Material 3
+
+    // Dependência para ter todos os ícones do Material 3
+    implementation("androidx.compose.material:material-icons-extended")
+
+    // Dependências do Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-database-ktx")
+    implementation("com.google.firebase:firebase-auth-ktx")
+
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.3")
+    implementation(libs.androidx.activity.compose)
+
+    // Dependências de Teste
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
